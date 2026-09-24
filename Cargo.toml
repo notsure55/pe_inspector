@@ -7,6 +7,7 @@ edition = "2024"
 resolver = "3"
 members = [
         "./um",
+        "./shared"
 ]
 
 [package.metadata.wdk.driver-model]
@@ -23,6 +24,7 @@ wdk = "0.4.1"
 wdk-alloc = "0.4.1"
 wdk-panic = "0.4.1"
 wdk-sys = "0.5.1"
+shared = { path = "shared/" }
 
 [features]
 default = []

@@ -1,9 +1,8 @@
 use anyhow::Result;
-use pe_inspector_um::Process;
-use windows_core::w;
+use um::Process;
 
 fn main() -> Result<()> {
-    let process = Process::from_name("cs2.exe")?;
+    let process = Process::from_name("test_process.exe")?;
 
     dbg!(&process);
 

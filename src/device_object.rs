@@ -3,13 +3,24 @@ use wdk_sys::{
     UNICODE_STRING,
 };
 
+use core::ops::{Deref, DerefMut};
 use wdk_sys::ntddk::IoCreateDevice;
 
-use crate::Result;
+use super::result::Result;
 
-pub struct DeviceObject {
-    pub raw: *mut DEVICE_OBJECT,
-    pub name: UNICODE_STRING,
+pub struct DeviceObject(pub *mut DEVICE_OBJECT);
+
+impl Deref for DeviceObject {
+    type Target = DEVICE_OBJECT;
+    fn deref(&self) -> &Self::Target {
+        unsafe { self.0.as_ref_unchecked() }
+    }
+}
+
+impl DerefMut for DeviceObject {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe { self.0.as_mut_unchecked() }
+    }
 }
 
 impl DeviceObject {
@@ -29,12 +40,9 @@ impl DeviceObject {
         };
 
         if !NT_SUCCESS(status) {
-            Err(status)
+            Result::Status(status)
         } else {
-            Ok(Self {
-                raw: device_object,
-                name,
-            })
+            Result::Ok(Self { 0: device_object })
         }
     }
 }

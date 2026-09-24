@@ -1,7 +1,8 @@
 #![no_std]
-extern crate alloc;
+#![feature(try_trait_v2)]
+#![feature(try_trait_v2_residual)]
 
-use core::result;
+use shared::wide;
 use wdk::println;
 use wdk_sys::ntddk::{
     IoCreateSymbolicLink, IoDeleteDevice, IoDeleteSymbolicLink, IofCompleteRequest,
@@ -9,13 +10,15 @@ use wdk_sys::ntddk::{
 };
 use wdk_sys::{
     DEVICE_OBJECT, DRIVER_OBJECT, IRP, IRP_MJ_CLOSE, IRP_MJ_CREATE, IRP_MJ_DEVICE_CONTROL,
-    NTSTATUS, NT_SUCCESS, PCUNICODE_STRING, STATUS_SUCCESS, UNICODE_STRING, WCHAR,
+    NTSTATUS, NT_SUCCESS, PCUNICODE_STRING, STATUS_SUCCESS, UNICODE_STRING,
 };
 
 mod device_object;
-use device_object::DeviceObject;
+mod io_control;
+mod result;
 
-pub type Result<T> = result::Result<T, NTSTATUS>;
+use device_object::DeviceObject;
+use result::Result;
 
 #[cfg(not(test))]
 extern crate wdk_panic;
@@ -33,7 +36,7 @@ static GLOBAL_ALLOCATOR: WdkAllocator = WdkAllocator;
 pub unsafe extern "system" fn driver_entry(
     driver_object: &mut DRIVER_OBJECT,
     _registry_path: PCUNICODE_STRING,
-) -> Result<NTSTATUS> {
+) -> Result<()> {
     println!("Hey we are in the driver entry!");
 
     let driver_unload = unsafe {
@@ -47,9 +50,9 @@ pub unsafe extern "system" fn driver_entry(
 
     let device_io_control = unsafe {
         core::mem::transmute::<
-            unsafe extern "C" fn(&mut DEVICE_OBJECT, &mut IRP) -> NTSTATUS,
+            unsafe extern "C" fn(&mut DEVICE_OBJECT, &mut IRP) -> Result<()>,
             unsafe extern "C" fn(*mut DEVICE_OBJECT, *mut IRP) -> i32,
-        >(device_io_control)
+        >(io_control::device_io_control)
     };
 
     driver_object.MajorFunction[IRP_MJ_DEVICE_CONTROL as usize] = Some(device_io_control);
@@ -71,17 +74,10 @@ pub unsafe extern "system" fn driver_entry(
     let mut sym_name = unicode_str!("\\??\\PeInspector1");
     check_status!(
         unsafe { IoCreateSymbolicLink(&mut sym_name, &mut device_name) },
-        unsafe { IoDeleteDevice(device_object.raw) }
+        unsafe { IoDeleteDevice(device_object.0) }
     );
 
-    Ok(STATUS_SUCCESS)
-}
-
-unsafe extern "C" fn device_io_control(
-    _device_object: &mut DEVICE_OBJECT,
-    _irp: &mut IRP,
-) -> NTSTATUS {
-    0
+    Result::Status(STATUS_SUCCESS)
 }
 
 unsafe extern "C" fn device_create_close(
@@ -90,7 +86,7 @@ unsafe extern "C" fn device_create_close(
 ) -> NTSTATUS {
     irp.IoStatus.__bindgen_anon_1.Status = STATUS_SUCCESS;
     irp.IoStatus.Information = 0;
-    IofCompleteRequest(irp, 0);
+    unsafe { IofCompleteRequest(irp, 0) };
 
     STATUS_SUCCESS
 }
@@ -100,25 +96,24 @@ unsafe extern "C" fn driver_unload(driver_object: &mut DRIVER_OBJECT) {
 
     let mut sym_name = unicode_str!("\\??\\PeDisector1");
 
-    unsafe { IoDeleteSymbolicLink(&mut sym_name) };
+    let _ = unsafe { IoDeleteSymbolicLink(&mut sym_name) };
     unsafe { IoDeleteDevice(driver_object.DeviceObject) };
 }
 
 #[macro_export]
-macro_rules! wide {
-    ($str:literal) => {
-        concat!($str, "\0")
-            .encode_utf16()
-            .collect::<alloc::vec::Vec<WCHAR>>()
-            .as_ptr()
-    };
+macro_rules! unicode_str {
+    ($str:expr) => {{
+        let mut string: UNICODE_STRING = Default::default();
+        unsafe { RtlInitUnicodeString(&mut string, wide!($str)) };
+        string
+    }};
 }
 
 #[macro_export]
-macro_rules! unicode_str {
-    ($str:literal) => {{
+macro_rules! unicode_str_from_wide_ptr {
+    ($ptr:expr) => {{
         let mut string: UNICODE_STRING = Default::default();
-        unsafe { RtlInitUnicodeString(&mut string, wide!($str)) };
+        unsafe { RtlInitUnicodeString(&mut string, $ptr) };
         string
     }};
 }
@@ -137,7 +132,7 @@ macro_rules! check_status {
 
         if !NT_SUCCESS(result) {
             $failure;
-            return Err(result);
+            return Result::Status(result);
         }
     }};
 }

@@ -378,6 +378,7 @@ checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
 name = "pe_inspector"
 version = "0.1.0"
 dependencies = [
+ "shared",
  "wdk",
  "wdk-alloc",
  "wdk-build",
@@ -542,6 +543,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "shared"
+version = "0.1.0"
+dependencies = [
+ "wdk-sys",
+]
+
+[[package]]
 name = "shlex"
 version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -682,6 +690,7 @@ name = "um"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "shared",
  "windows 0.62.2",
  "windows-core 0.62.2",
 ]
