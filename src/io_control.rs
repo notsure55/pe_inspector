@@ -12,7 +12,7 @@ use crate::unicode_str_from_wide_ptr;
 macro_rules! return_request {
     ($irp: ident, $status: expr, $info: expr) => {
         $irp.IoStatus.__bindgen_anon_1.Status = $status;
-        $irp.IoStatus.Information = 0;
+        $irp.IoStatus.Information = $info;
         unsafe { IofCompleteRequest($irp, 0) };
 
         return Result::Status($status)

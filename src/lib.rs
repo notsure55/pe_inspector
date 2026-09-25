@@ -95,7 +95,7 @@ unsafe extern "C" fn device_create_close(
 unsafe extern "C" fn driver_unload(driver_object: &mut DRIVER_OBJECT) {
     println!("Unloading driver!");
 
-    let mut sym_name = unicode_str!("\\??\\PeDisector1");
+    let mut sym_name = unicode_str!("\\??\\PeInspector1");
 
     let _ = unsafe { IoDeleteSymbolicLink(&mut sym_name) };
     unsafe { IoDeleteDevice(driver_object.DeviceObject) };
