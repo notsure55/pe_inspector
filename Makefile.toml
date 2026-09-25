@@ -4,13 +4,17 @@ default_to_workspace = false
 [env.development]
 TARGET_DIR = "target/debug/"
 
-[task.build]
-script = [ "cargo b --all" ]
+[tasks.build]
+command = "cargo"
+args = ["build", "--all"]
+
+[tasks.examples]
+command = "cargo"
+args = ["build", "--all", "--examples"]
 
 [tasks.rename]
 dependencies = ["build"]
 script = ["cd %TARGET_DIR%" , "del pe_inspector.sys", "rename pe_inspector.dll pe_inspector.sys"]
 
 [tasks.all]
-script = [ "cargo b --all --examples"]
-dependencies = ["rename"]
+dependencies = ["build", "rename", "examples"]

@@ -15,6 +15,7 @@ use wdk_sys::{
 
 mod device_object;
 mod io_control;
+pub mod process;
 mod result;
 
 use device_object::DeviceObject;
@@ -112,6 +113,9 @@ macro_rules! unicode_str {
 #[macro_export]
 macro_rules! unicode_str_from_wide_ptr {
     ($ptr:expr) => {{
+        use wdk_sys::ntddk::RtlInitUnicodeString;
+        use wdk_sys::UNICODE_STRING;
+
         let mut string: UNICODE_STRING = Default::default();
         unsafe { RtlInitUnicodeString(&mut string, $ptr) };
         string
