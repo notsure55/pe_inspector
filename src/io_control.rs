@@ -5,6 +5,7 @@ use shared::IOCTL_ATTACH_PROCESS;
 use wdk::println;
 use wdk_sys::ntddk::{/*__int2c,*/ IofCompleteRequest};
 use wdk_sys::{DEVICE_OBJECT, IRP, STATUS_BAD_DATA, STATUS_SUCCESS, STATUS_UNSUCCESSFUL};
+use windows_types::kernel::unicode_string::UnicodeString;
 
 use super::result::Result;
 use crate::unicode_str_from_wide_ptr;
@@ -59,9 +60,9 @@ pub unsafe extern "C" fn device_io_control(
                 return_request!(irp, STATUS_BAD_DATA, 0);
             }
 
-            let process_name = unicode_str_from_wide_ptr!(unsafe {
+            let process_name = UnicodeString::from_raw(unicode_str_from_wide_ptr!(unsafe {
                 irp.AssociatedIrp.SystemBuffer.cast::<*const u16>().read()
-            });
+            }));
 
             process::from_name(&process_name);
 
