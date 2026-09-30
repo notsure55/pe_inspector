@@ -1,44 +1,35 @@
 #![allow(non_camel_case_types)]
 
 use super::result::Result;
+
+extern crate alloc;
+
+use alloc::string::String;
+use alloc::string::ToString;
 use wdk::println;
-use wdk_sys::ntddk::IoGetCurrentProcess;
-use wdk_sys::{
-    HANDLE, LIST_ENTRY, PEPROCESS, PPEB, PVOID, STATUS_SUCCESS, STATUS_UNSUCCESSFUL, UNICODE_STRING,
-};
+use wdk_sys::{STATUS_SUCCESS, STATUS_UNSUCCESSFUL};
 
-use windows_types::kernel::{eprocess::Eprocess, unicode_string::UnicodeString};
+use windows_types::kernel::eprocess::Eprocess;
 
-pub fn from_name(process_name: &UnicodeString) -> Result<()> {
-    let process = Eprocess::from_current();
-    let original_name = &process.peb.process_parameters.image_path_name;
+// TODO: make memory reading functions
+pub fn from_name(process_name: String) -> Result<()> {
+    let mut process = Eprocess::from_current();
+
+    let original_name = process.image_name().unwrap().to_string();
 
     loop {
-        let name = &process.peb.process_parameters.image_path_name;
+        process = process.next_process();
 
-        let list_entry = &process.pcb.process_list_entry;
+        if let Some(name) = process.image_name() {
+            if process_name.contains(name) {
+                println!("Found process => {}", process_name);
+                return Result::Status(STATUS_SUCCESS);
+            }
 
-        let list_entry_addr = list_entry as *const _ as usize;
-
-        let next_process = unsafe {
-            list_entry
-                .Flink
-                .cast::<*mut LIST_ENTRY>()
-                .read()
-                .byte_offset(!((list_entry_addr - process.raw as usize) as isize))
-                .cast::<Eprocess>()
-        };
-
-        println!("Whus up we found a name {name}");
-
-        if process_name == name {
-            println!("Whus up we found the right name! {name}");
-            return Result::Status(STATUS_SUCCESS);
-        }
-
-        if original_name == name {
-            println!("Failed to find process!");
-            break;
+            if original_name == name {
+                println!("Failed to find process!");
+                break;
+            }
         }
     }
 

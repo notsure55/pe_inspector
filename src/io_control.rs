@@ -1,6 +1,9 @@
 #![allow(unused_unsafe)]
 
+extern crate alloc;
+
 use super::process;
+use alloc::string::ToString;
 use shared::IOCTL_ATTACH_PROCESS;
 use wdk::println;
 use wdk_sys::ntddk::{/*__int2c,*/ IofCompleteRequest};
@@ -64,7 +67,7 @@ pub unsafe extern "C" fn device_io_control(
                 irp.AssociatedIrp.SystemBuffer.cast::<*const u16>().read()
             }));
 
-            process::from_name(&process_name);
+            process::from_name(process_name.to_string());
 
             return_request!(irp, STATUS_SUCCESS, 0);
         }
