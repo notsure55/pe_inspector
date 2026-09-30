@@ -1,6 +1,7 @@
 #![no_std]
 
 use wdk_sys::{FILE_ANY_ACCESS, METHOD_BUFFERED};
+pub use windows_types::kernel::va::Va;
 
 macro_rules! ctl_code {
     ($device_type: literal, $function: literal, $method: expr, $access: expr) => {
@@ -30,3 +31,11 @@ macro_rules! wide {
 }
 
 pub const IOCTL_ATTACH_PROCESS: u32 = ctl_code!(0x8000, 0x801, METHOD_BUFFERED, FILE_ANY_ACCESS);
+pub const IOCTL_READ_VIRTUAL_MEMORY: u32 =
+    ctl_code!(0x8000, 0x802, METHOD_BUFFERED, FILE_ANY_ACCESS);
+
+#[repr(C, align(8))]
+pub struct ReadVirtualMemory {
+    pub va: Va,
+    pub size: usize,
+}

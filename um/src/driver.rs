@@ -42,3 +42,24 @@ pub fn attach_process(handle: HANDLE, name: impl AsRef<str>) -> Result<()> {
 
     Ok(())
 }
+
+pub fn read_virtual_memory(handle: HANDLE, va: shared::Va, size: usize) -> Result<Vec<u8>> {
+    let rv = shared::ReadVirtualMemory { va: va, size: size };
+    let mut buffer = vec![0u8; size];
+    let mut bytes_read = 0u32;
+
+    unsafe {
+        DeviceIoControl(
+            handle,
+            shared::IOCTL_READ_VIRTUAL_MEMORY,
+            Some(&rv as *const _ as _),
+            std::mem::size_of::<shared::ReadVirtualMemory>() as u32,
+            Some(&mut buffer as *mut _ as _),
+            size as u32,
+            Some(&mut bytes_read),
+            None,
+        )?;
+    }
+
+    Ok(buffer)
+}

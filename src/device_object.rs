@@ -5,8 +5,7 @@ use wdk_sys::{
 
 use core::ops::{Deref, DerefMut};
 use wdk_sys::ntddk::IoCreateDevice;
-
-use super::result::Result;
+use windows_types::kernel::result::Result;
 
 pub struct DeviceObject(pub *mut DEVICE_OBJECT);
 

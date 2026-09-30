@@ -1,5 +1,5 @@
 fn main() {
-    let health = 100;
+    let health: u32 = 100;
 
     loop {
         println!("my value:{:X}", health);

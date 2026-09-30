@@ -10,6 +10,10 @@ members = [
         "./shared",
 ]
 
+[workspace.dependencies]
+windows_types = { path = "../windows_types/", features = ["kernel"] }
+wdk-sys = "0.5.1"
+
 [package.metadata.wdk.driver-model]
 driver-type = "WDM"
 

@@ -53,6 +53,21 @@ impl Process {
 
         Ok(Self { handle })
     }
+    pub fn read_virtual_memory<T>(&self, va: shared::Va) -> Result<T> {
+        match self.handle {
+            Handle::Kernel(h) => {
+                let value = unsafe {
+                    let buffer = driver::read_virtual_memory(h, va, std::mem::size_of::<T>())?;
+                    buffer.as_ptr().cast::<T>().read()
+                };
+
+                Ok(value)
+            }
+            Handle::User(_h) => {
+                todo!("Not implemented yet!");
+            }
+        }
+    }
     pub fn alloc_memory(
         &self,
         address: Option<PVOID>,

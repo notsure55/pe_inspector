@@ -1,25 +1,22 @@
 #![no_std]
-#![feature(try_trait_v2)]
-#![feature(try_trait_v2_residual)]
 
 use shared::wide;
 use wdk::println;
 use wdk_sys::ntddk::{
     IoCreateSymbolicLink, IoDeleteDevice, IoDeleteSymbolicLink, IofCompleteRequest,
-    RtlInitUnicodeString,
 };
 use wdk_sys::{
     DEVICE_OBJECT, DRIVER_OBJECT, IRP, IRP_MJ_CLOSE, IRP_MJ_CREATE, IRP_MJ_DEVICE_CONTROL,
-    NTSTATUS, NT_SUCCESS, PCUNICODE_STRING, STATUS_SUCCESS, UNICODE_STRING,
+    NTSTATUS, NT_SUCCESS, PCUNICODE_STRING, STATUS_SUCCESS,
 };
 
 mod device_object;
 mod io_control;
 pub mod process;
-mod result;
 
 use device_object::DeviceObject;
-use result::Result;
+use windows_types::kernel::result::Result;
+use windows_types::{check_status, unicode_str};
 
 #[cfg(not(test))]
 extern crate wdk_panic;
@@ -99,44 +96,4 @@ unsafe extern "C" fn driver_unload(driver_object: &mut DRIVER_OBJECT) {
 
     let _ = unsafe { IoDeleteSymbolicLink(&mut sym_name) };
     unsafe { IoDeleteDevice(driver_object.DeviceObject) };
-}
-
-#[macro_export]
-macro_rules! unicode_str {
-    ($str:expr) => {{
-        let mut string: UNICODE_STRING = Default::default();
-        unsafe { RtlInitUnicodeString(&mut string, wide!($str)) };
-        string
-    }};
-}
-
-#[macro_export]
-macro_rules! unicode_str_from_wide_ptr {
-    ($ptr:expr) => {{
-        use wdk_sys::ntddk::RtlInitUnicodeString;
-        use wdk_sys::UNICODE_STRING;
-
-        let mut string: UNICODE_STRING = Default::default();
-        unsafe { RtlInitUnicodeString(&mut string, $ptr) };
-        string
-    }};
-}
-
-#[macro_export]
-macro_rules! check_status {
-    ($status: expr) => {{
-        let result = $status;
-
-        if !NT_SUCCESS(result) {
-            return Err(result);
-        }
-    }};
-    ($status: expr, $failure: expr) => {{
-        let result = $status;
-
-        if !NT_SUCCESS(result) {
-            $failure;
-            return Result::Status(result);
-        }
-    }};
 }

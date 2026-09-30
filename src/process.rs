@@ -1,7 +1,5 @@
 #![allow(non_camel_case_types)]
 
-use super::result::Result;
-
 extern crate alloc;
 
 use alloc::string::String;
@@ -10,15 +8,29 @@ use wdk::println;
 use wdk_sys::{STATUS_SUCCESS, STATUS_UNSUCCESSFUL};
 
 use windows_types::kernel::eprocess::Eprocess;
+use windows_types::kernel::result::Result;
+
+static mut PROCESS: Eprocess = Eprocess {
+    raw: core::ptr::null_mut(),
+    kapc_state: core::cell::UnsafeCell::new(None),
+};
+
+pub fn get_eprocess() -> &'static Eprocess {
+    unsafe { (&raw const PROCESS).as_ref_unchecked() }
+}
+pub fn get_mut_eprocess() -> &'static mut Eprocess {
+    unsafe { (&raw mut PROCESS).as_mut_unchecked() }
+}
 
 // TODO: make memory reading functions
 pub fn from_name(process_name: String) -> Result<()> {
-    let mut process = Eprocess::from_current();
+    let process = get_mut_eprocess();
+    process.raw = Eprocess::from_current().raw;
 
     let original_name = process.image_name().unwrap().to_string();
 
     loop {
-        process = process.next_process();
+        process.next_process();
 
         if let Some(name) = process.image_name() {
             if process_name.contains(name) {

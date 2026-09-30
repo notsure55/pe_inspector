@@ -4,14 +4,15 @@ extern crate alloc;
 
 use super::process;
 use alloc::string::ToString;
-use shared::IOCTL_ATTACH_PROCESS;
+use shared;
 use wdk::println;
 use wdk_sys::ntddk::{/*__int2c,*/ IofCompleteRequest};
-use wdk_sys::{DEVICE_OBJECT, IRP, STATUS_BAD_DATA, STATUS_SUCCESS, STATUS_UNSUCCESSFUL};
-use windows_types::kernel::unicode_string::UnicodeString;
+use wdk_sys::{
+    DEVICE_OBJECT, IRP, STATUS_BAD_DATA, STATUS_NO_MATCH, STATUS_SUCCESS, STATUS_UNSUCCESSFUL,
+};
+use windows_types::kernel::{result::Result, unicode_string::UnicodeString};
 
-use super::result::Result;
-use crate::unicode_str_from_wide_ptr;
+use windows_types::unicode_str_from_wide_ptr;
 
 macro_rules! return_request {
     ($irp: ident, $status: expr, $info: expr) => {
@@ -58,7 +59,7 @@ pub unsafe extern "C" fn device_io_control(
     let dic = unsafe { stack_location.Parameters.DeviceIoControl };
 
     match dic.IoControlCode {
-        IOCTL_ATTACH_PROCESS => {
+        shared::IOCTL_ATTACH_PROCESS => {
             if dic.InputBufferLength != core::mem::size_of::<usize>() as u32 {
                 return_request!(irp, STATUS_BAD_DATA, 0);
             }
@@ -70,6 +71,34 @@ pub unsafe extern "C" fn device_io_control(
             process::from_name(process_name.to_string());
 
             return_request!(irp, STATUS_SUCCESS, 0);
+        }
+        shared::IOCTL_READ_VIRTUAL_MEMORY => {
+            if dic.InputBufferLength != core::mem::size_of::<shared::ReadVirtualMemory>() as u32 {
+                return_request!(irp, STATUS_BAD_DATA, 0);
+            }
+
+            let read_virtual_memory = unsafe {
+                irp.AssociatedIrp
+                    .SystemBuffer
+                    .cast::<shared::ReadVirtualMemory>()
+                    .read()
+            };
+
+            if process::get_eprocess().raw.is_null() {
+                return_request!(irp, STATUS_NO_MATCH, 0);
+            };
+
+            let buffer = process::get_eprocess()
+                .read_virtual_memory(read_virtual_memory.va, read_virtual_memory.size)?;
+
+            unsafe {
+                irp.AssociatedIrp
+                    .SystemBuffer
+                    .cast::<u8>()
+                    .copy_from(buffer.as_ptr(), buffer.len())
+            };
+
+            return_request!(irp, STATUS_SUCCESS, buffer.len() as u64);
         }
         _ => {}
     }

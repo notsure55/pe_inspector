@@ -557,6 +557,7 @@ name = "shared"
 version = "0.1.0"
 dependencies = [
  "wdk-sys",
+ "windows_types",
 ]
 
 [[package]]
