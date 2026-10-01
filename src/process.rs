@@ -7,34 +7,34 @@ use alloc::string::ToString;
 use wdk::println;
 use wdk_sys::{STATUS_SUCCESS, STATUS_UNSUCCESSFUL};
 
-use windows_types::kernel::eprocess::Eprocess;
+use windows_types::kernel::eprocess::{Eprocess, EPROCESS};
 use windows_types::kernel::result::Result;
 
-static mut PROCESS: Eprocess = Eprocess {
-    raw: core::ptr::null_mut(),
-    kapc_state: core::cell::UnsafeCell::new(None),
-};
+static mut CURRENT_PROCESS: Option<*mut EPROCESS> = None;
 
-pub fn get_eprocess() -> &'static Eprocess {
-    unsafe { (&raw const PROCESS).as_ref_unchecked() }
-}
-pub fn get_mut_eprocess() -> &'static mut Eprocess {
-    unsafe { (&raw mut PROCESS).as_mut_unchecked() }
+pub fn get_eprocess() -> Eprocess {
+    if let Some(ptr) = unsafe { *(&raw mut CURRENT_PROCESS) } {
+        Eprocess::from_raw(ptr)
+    } else {
+        Eprocess::from_current()
+    }
 }
 
-// TODO: make memory reading functions
+pub fn set_eprocess(raw: *mut EPROCESS) {
+    unsafe { *(&raw mut CURRENT_PROCESS) = Some(raw) };
+}
+
 pub fn from_name(process_name: String) -> Result<()> {
-    let process = get_mut_eprocess();
-    process.raw = Eprocess::from_current().raw;
+    let mut process = get_eprocess();
 
     let original_name = process.image_name().unwrap().to_string();
 
     loop {
-        process.next_process();
+        process = process.next_process();
 
         if let Some(name) = process.image_name() {
             if process_name.contains(name) {
-                println!("Found process => {}", process_name);
+                set_eprocess(process.raw);
                 return Result::Status(STATUS_SUCCESS);
             }
 

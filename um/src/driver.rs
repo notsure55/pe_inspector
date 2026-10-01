@@ -54,12 +54,14 @@ pub fn read_virtual_memory(handle: HANDLE, va: shared::Va, size: usize) -> Resul
             shared::IOCTL_READ_VIRTUAL_MEMORY,
             Some(&rv as *const _ as _),
             std::mem::size_of::<shared::ReadVirtualMemory>() as u32,
-            Some(&mut buffer as *mut _ as _),
+            Some(buffer.as_mut_ptr() as _),
             size as u32,
             Some(&mut bytes_read),
             None,
         )?;
     }
+
+    println!("bytes_read = {bytes_read}");
 
     Ok(buffer)
 }

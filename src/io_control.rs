@@ -88,8 +88,10 @@ pub unsafe extern "C" fn device_io_control(
                 return_request!(irp, STATUS_NO_MATCH, 0);
             };
 
-            let buffer = process::get_eprocess()
-                .read_virtual_memory(read_virtual_memory.va, read_virtual_memory.size)?;
+            let mut process = process::get_eprocess();
+
+            let buffer =
+                process.read_virtual_memory(read_virtual_memory.va, read_virtual_memory.size)?;
 
             unsafe {
                 irp.AssociatedIrp
