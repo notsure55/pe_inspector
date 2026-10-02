@@ -68,6 +68,19 @@ impl Process {
             }
         }
     }
+    pub fn write_virtual_memory<T>(&self, va: shared::Va, value: T) -> Result<()> {
+        match self.handle {
+            Handle::Kernel(h) => {
+                let size = std::mem::size_of::<T>();
+                let bytes =
+                    unsafe { std::slice::from_raw_parts((&value as *const T).cast::<u8>(), size) };
+                driver::write_virtual_memory(h, va, bytes)
+            }
+            Handle::User(_h) => {
+                todo!("Not implemented yet!");
+            }
+        }
+    }
     pub fn alloc_memory(
         &self,
         address: Option<PVOID>,

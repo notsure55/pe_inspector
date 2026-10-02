@@ -102,6 +102,48 @@ pub unsafe extern "C" fn device_io_control(
 
             return_request!(irp, STATUS_SUCCESS, buffer.len() as u64);
         }
+        shared::IOCTL_WRITE_VIRTUAL_MEMORY => {
+            if dic.InputBufferLength != core::mem::size_of::<shared::WriteVirtualMemory>() as u32 {
+                return_request!(irp, STATUS_BAD_DATA, 0);
+            }
+
+            let write_virtual_memory = unsafe {
+                irp.AssociatedIrp
+                    .SystemBuffer
+                    .cast::<shared::WriteVirtualMemory>()
+                    .read()
+            };
+
+            let mut process = process::get_eprocess();
+
+            if process.raw.is_null() {
+                return_request!(irp, STATUS_NO_MATCH, 0);
+            };
+
+            let mut buffer = alloc::vec![0u8; write_virtual_memory.size];
+
+            unsafe {
+                buffer.as_mut_ptr().copy_from(
+                    write_virtual_memory.buffer.cast::<u8>(),
+                    write_virtual_memory.size,
+                )
+            };
+
+            let bytes_written = process.write_virtual_memory(
+                write_virtual_memory.va,
+                write_virtual_memory.size,
+                buffer.as_ptr(),
+            )?;
+
+            unsafe {
+                irp.AssociatedIrp
+                    .SystemBuffer
+                    .cast::<u64>()
+                    .write(bytes_written);
+            };
+
+            return_request!(irp, STATUS_SUCCESS, core::mem::size_of::<u64>() as _);
+        }
         _ => {}
     }
 

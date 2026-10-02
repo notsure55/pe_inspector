@@ -16,6 +16,12 @@ fn main() -> Result<()> {
 
     println!("{health}");
 
+    process.write_virtual_memory(va, health + 50)?;
+
+    let health: u32 = process.read_virtual_memory(va)?;
+
+    println!("{health}");
+
     dbg!(&process);
 
     Ok(())
