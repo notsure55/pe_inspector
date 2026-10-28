@@ -1,7 +1,7 @@
 #![no_std]
 
 use wdk_sys::{FILE_ANY_ACCESS, METHOD_BUFFERED, PVOID};
-pub use windows_types::kernel::va::Va;
+pub use windows_types::va::Va;
 
 macro_rules! ctl_code {
     ($device_type: literal, $function: literal, $method: expr, $access: expr) => {

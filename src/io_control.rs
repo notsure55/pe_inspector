@@ -68,9 +68,14 @@ pub unsafe extern "C" fn device_io_control(
                 irp.AssociatedIrp.SystemBuffer.cast::<*const u16>().read()
             }));
 
-            process::from_name(process_name.to_string());
-
-            return_request!(irp, STATUS_SUCCESS, 0);
+            match process::from_name(process_name.to_string()) {
+                Result::Status(err) => {
+                    return_request!(irp, err, 0);
+                }
+                Result::Ok(_) => {
+                    return_request!(irp, STATUS_SUCCESS, 0);
+                }
+            }
         }
         shared::IOCTL_READ_VIRTUAL_MEMORY => {
             if dic.InputBufferLength != core::mem::size_of::<shared::ReadVirtualMemory>() as u32 {
@@ -90,17 +95,21 @@ pub unsafe extern "C" fn device_io_control(
 
             let mut process = process::get_eprocess();
 
-            let buffer =
-                process.read_virtual_memory(read_virtual_memory.va, read_virtual_memory.size)?;
+            match process.read_virtual_memory(read_virtual_memory.va, read_virtual_memory.size) {
+                Result::Ok(buffer) => {
+                    unsafe {
+                        irp.AssociatedIrp
+                            .SystemBuffer
+                            .cast::<u8>()
+                            .copy_from(buffer.as_ptr(), buffer.len())
+                    };
 
-            unsafe {
-                irp.AssociatedIrp
-                    .SystemBuffer
-                    .cast::<u8>()
-                    .copy_from(buffer.as_ptr(), buffer.len())
-            };
-
-            return_request!(irp, STATUS_SUCCESS, buffer.len() as u64);
+                    return_request!(irp, STATUS_SUCCESS, buffer.len() as u64);
+                }
+                Result::Status(err) => {
+                    return_request!(irp, err, 0);
+                }
+            }
         }
         shared::IOCTL_WRITE_VIRTUAL_MEMORY => {
             if dic.InputBufferLength != core::mem::size_of::<shared::WriteVirtualMemory>() as u32 {
@@ -129,20 +138,24 @@ pub unsafe extern "C" fn device_io_control(
                 )
             };
 
-            let bytes_written = process.write_virtual_memory(
+            match process.write_virtual_memory(
                 write_virtual_memory.va,
                 write_virtual_memory.size,
                 buffer.as_ptr(),
-            )?;
-
-            unsafe {
-                irp.AssociatedIrp
-                    .SystemBuffer
-                    .cast::<u64>()
-                    .write(bytes_written);
-            };
-
-            return_request!(irp, STATUS_SUCCESS, core::mem::size_of::<u64>() as _);
+            ) {
+                Result::Ok(bytes_written) => {
+                    unsafe {
+                        irp.AssociatedIrp
+                            .SystemBuffer
+                            .cast::<u64>()
+                            .write(bytes_written);
+                    };
+                    return_request!(irp, STATUS_SUCCESS, core::mem::size_of::<u64>() as _);
+                }
+                Result::Status(err) => {
+                    return_request!(irp, err, 0);
+                }
+            }
         }
         _ => {}
     }
